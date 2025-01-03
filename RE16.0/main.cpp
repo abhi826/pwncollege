@@ -82,7 +82,7 @@ ulong read_register(long param_1,char param_2)
   if (param_2 == '\x04') {
     uVar1 = (ulong)*(char *)(param_1 + 0x100);
   }
-  else if (param_2 == '@') {
+  else if (param_2 == '\x40') {
     uVar1 = (ulong)*(char *)(param_1 + 0x101);
   }
   else if (param_2 == '\x10') {
@@ -249,6 +249,10 @@ void interpret_sys(long param_1,char param_2,char param_3)
 void interpret_stm(long param_1,char param_2,char param_3)
 
 {
+  // interpret_stm(param_1,0x40,4);
+  // uVar1 = value at register a
+  // uVar2 = value at register b
+  // *(char *)(param_1 + uVar2) = uVar1;
   char uVar1;
   char uVar2;
   char* uVar3;
@@ -266,6 +270,12 @@ void interpret_stm(long param_1,char param_2,char param_3)
 void interpret_add(long param_1,char param_2,char param_3)
 
 {
+  
+  // interpret_add(param_1,0x40,0x10);
+  // cVar1 = value of register b
+  // cVar2 = value of register c
+  // value of reg b = cVar1 +cVar2
+  // add value of reg param_3 to reg param_2
   char cVar1;
   char cVar2;
   char* uVar3;
@@ -283,6 +293,12 @@ void interpret_add(long param_1,char param_2,char param_3)
 void interpret_ldm(long param_1,char param_2,char param_3)
 
 {
+/*
+ read value of reg param3 
+ read memory at value of reg param3
+ value of reg param2 becomes the value read in memory at the value of reg param3.
+ reg param_2 = *(char*)(param_1 + param_3)
+*/
   char uVar1;
   char* uVar2;
   char* uVar3;
@@ -299,6 +315,15 @@ void interpret_ldm(long param_1,char param_2,char param_3)
 void interpret_cmp(long param_1,char param_2,char param_3)
 
 {
+  /*
+  interpret_cmp(param_1,4,0x40);
+  bVar1 = reg a
+  bVar2 = reg b
+  if(bVar1 == bVar2){
+    *(char *)(param_1 + 0x106) = *(char *)(param_1 + 0x106) | 2;
+  }
+
+  */
   char bVar1;
   char bVar2;
   char* uVar3;
@@ -328,6 +353,9 @@ void interpret_cmp(long param_1,char param_2,char param_3)
   return;
 }
 
+/*
+python -c 'import sys; sys.stdout.buffer.write(b"\xce\x06\x67\x4c")'
+*/
 
 int main(){
   char bVar1;
@@ -336,29 +364,101 @@ int main(){
   char bVar4;
   long arr[33];
   long param_1 = reinterpret_cast<long>(arr);
-  
+
+  /*
+  Register Locations:
+  a(0x4) = param_1 + 0x100
+  b(0x40) = param_1 + 0x101
+  c(0x10) = param_1 + 0x102
+  d(0x8) = param_1 + 0x103
+  */
+
+  //*(char *)(param_1 + 0x101) = param_3;
+  // IMM b = 0x79
   interpret_imm(param_1,0x40,0x79);
+  // *(char *)(param_1 + 0x102) = param_3;
+  // IMM c = 0x4
   interpret_imm(param_1,0x10,4);
+  //*(char *)(param_1 + 0x100) = param_3;
+  // IMM a = 0
   interpret_imm(param_1,4,0);
+  //  ... read_memory
+  // writing bytes read to (void*)((ulong)*(char *)(param_1 + 0x101) + param_1) = param_1 +0x79
+  // *(char *)(param_1 + 0x100) = bytes read;
   interpret_sys(param_1,2,4);
+  //*(char *)(param_1 + 0x101) = param_3;
+  //IMM b = 0x99
   interpret_imm(param_1,0x40,0x99);
+  // *(char *)(param_1 + 0x102) = param_3;
+  // IMM c = 0x1
   interpret_imm(param_1,0x10,1);
+  // *(char *)(param_1 + 0x100) = param_3;
+  // IMM a = 0xce
   interpret_imm(param_1,4,0xce);
+  /*
+  // uVar1 = value at register a
+  // uVar2 = value at register b
+  // *(char *)(param_1 + uVar2) = uVar1;
+  // *(char *)(param_1 + 0x99) = 0xce;
+  // STM *b = a
+  */
   interpret_stm(param_1,0x40,4);
+  /*
+  reg b += reg c
+  b = 0x99 + 0x1 = 0x9a
+  ADD b c
+  */
   interpret_add(param_1,0x40,0x10);
+  // *(char *)(param_1 + 0x100) = param_3;
+  // IMM a = 0x6
   interpret_imm(param_1,4,6);
+  // *(char*)(param_1 + 0x9a) = 0x6
+  // STM *b = a
   interpret_stm(param_1,0x40,4);
+  // b = 0x9a + 0x1 = 0x9b
+  // ADD b c
   interpret_add(param_1,0x40,0x10);
+  // *(char *)(param_1 + 0x100) = param_3;
+  // IMM a = 0x67
   interpret_imm(param_1,4,0x67);
+  // *(char*)(param_1 + 0x9b) = 0x67
+  // STM *b = a
   interpret_stm(param_1,0x40,4);
+  // b = 0x9b + 0x1 = 0x9c
+  // ADD b c
   interpret_add(param_1,0x40,0x10);
+  // *(char *)(param_1 + 0x100) = param_3;
+  // IMM a = 0x4c
   interpret_imm(param_1,4,0x4c);
+  // *(char*)(param_1 + 0x9c) = 0x4c
+  // STM *b = a
   interpret_stm(param_1,0x40,4);
+  // b = 0x9c + 0x1 = 0x9d
+  // ADD b c
   interpret_add(param_1,0x40,0x10);
+  //*(char *)(param_1 + 0x101) = param_3;
+  // IMM b = 0x99
   interpret_imm(param_1,0x40,0x99);
+  // LDM b = *b
+  // reg param_2 = *(char*)(param_1 + reg param_3)
+  // b = *(char*)(param_1 + reg b)
+  // b = *(char*)(param_1 + 0x99)
+  // b = 0xce;
   interpret_ldm(param_1,0x40,0x40);
+  // *(char *)(param_1 + 0x100) = param_3;
+  // IMM a = 0x79
   interpret_imm(param_1,4,0x79);
+  // reg param_2 = *(char*)(param_1 + reg param_3)
+  // a = *(char)(param_1 + 0x79)
+  // a = (first char read from user input)
   interpret_ldm(param_1,4,4);
+  /*
+  bVar1 = reg a
+  bVar2 = reg b
+  if(bVar1 == bVar2){
+    *(char *)(param_1 + 0x106) = *(char *)(param_1 + 0x106) | 2;
+  }
+  */
   interpret_cmp(param_1,4,0x40);
   bVar1 = *(char *)(param_1 + 0x106);
   interpret_imm(param_1,0x40,0x9a);
@@ -379,8 +479,12 @@ int main(){
   interpret_ldm(param_1,4,4);
   interpret_cmp(param_1,4,0x40);
   bVar4 = *(char *)(param_1 + 0x106);
+  // *(char *)(param_1 + 0x100) = param_3;
+  // IMM a = 1
   interpret_imm(param_1,4,1);
+  // IMM b = 0
   interpret_imm(param_1,0x40,0);
+  // IMM c = 0x1
   interpret_imm(param_1,0x10,1);
   if ((bVar4 & 2) == 0 || ((bVar3 & 2) == 0 || ((bVar2 & 2) == 0 || (bVar1 & 2) == 0))) {
     interpret_imm(param_1,8,0x49);
@@ -416,66 +520,100 @@ int main(){
     interpret_imm(param_1,4,1);
   }
   else {
+    // d = 0x43
     interpret_imm(param_1,8,0x43);
+    // *(char*)(param_1 + 0) = 0x43
+    // STM *b = d
     interpret_stm(param_1,0x40,8);
+    /*
+    uVar1 = sys_write(param_1,*(char *)(param_1 + 0x100),
+                      (void*)((ulong)*(char *)(param_1 + 0x101) + param_1),bVar2);
+    uVar1 = sys_write(param_1,1, param_1 +0 , 1);
+    
+    write_register(param_1,param_3,uVar1);
+    reg a = 1
+    */
     interpret_sys(param_1,0x20,4);
+    // d = 0x4f
     interpret_imm(param_1,8,0x4f);
+    // *(char*)(param_1 + 0) = 0x4f
+    // STM *b = d   
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
+    //R
     interpret_imm(param_1,8,0x52);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+    //R
     interpret_imm(param_1,8,0x52);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+    //E
     interpret_imm(param_1,8,0x45);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+    //C
     interpret_imm(param_1,8,0x43);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+   //T
     interpret_imm(param_1,8,0x54);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x21);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x20);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x59);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x6f);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x75);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x72);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x20);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x66);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x6c);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x61);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x67);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x3a);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,10);
     interpret_stm(param_1,0x40,8);
     interpret_sys(param_1,0x20,4);
+
     interpret_imm(param_1,8,0x2f);
     interpret_imm(param_1,0x40,0);
     interpret_stm(param_1,0x40,8);
